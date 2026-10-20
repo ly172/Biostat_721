@@ -1,0 +1,134 @@
+---
+title: "Preparing an Ovarian Cancer Dataset"
+subtitle: "BIOSTAT 721 Project 1"
+output:
+  word_document: default
+  latex_document:
+    template: report_template.tex
+    number_sections: true
+---
+
+```{r setup, include=FALSE}
+# R Markdown computes every reported count from the original course files.
+# The rendered main.tex is self-contained and can be compiled on Overleaf.
+knitr::opts_chunk$set(echo = FALSE, message = FALSE, warning = FALSE,
+                      results = "asis")
+source(file.path("R", "analysis.R"))
+result <- run_analysis(".", write_outputs = TRUE)
+patients <- result$patients
+analytic <- result$analytic_dataset
+raw <- result$raw_encounters
+np <- nrow(patients)
+ne <- nrow(analytic)
+n_floor <- sum(raw$WBC < 1, na.rm = TRUE)
+n_bmi_invalid <- sum(raw$BMI <= 0, na.rm = TRUE)
+pct <- function(n, d) sprintf("%.1f", 100 * n / d)
+is_word <- knitr::pandoc_to("docx")
+if (is_word) source(file.path("R", "word_tables.R"))
+table_ref <- function(label, number) {
+  if (is_word) as.character(number) else paste0("\\ref{", label, "}")
+}
+# Explicit English month names keep report dates independent of LC_TIME.
+format_report_date <- function(x) {
+  paste(month.name[as.integer(format(x, "%m"))], format(x, "%d, %Y"))
+}
+versions <- data.frame(
+  Component = c("R", "rmarkdown", "knitr", "base / stats / utils / tools", "Pandoc"),
+  Version = c(as.character(getRversion()), as.character(packageVersion("rmarkdown")),
+              as.character(packageVersion("knitr")), as.character(getRversion()),
+              as.character(rmarkdown::pandoc_version()))
+)
+write.csv(versions, file.path("outputs", "software_versions.csv"), row.names = FALSE)
+loaded <- sort(loadedNamespaces())
+write.csv(data.frame(package = loaded,
+                    version = vapply(loaded, function(x) as.character(packageVersion(x)), "")),
+          file.path("outputs", "package_versions.csv"), row.names = FALSE)
+capture.output(sessionInfo(), file = file.path("outputs", "session_info.txt"))
+```
+
+`r if (is_word) "**1 Introduction**" else "# Introduction"`
+
+Women with active ovarian cancer attend chemotherapy appointments every two to three weeks. Visits to the emergency department or unanticipated hospital admissions between appointments are a concern for their physicians. Predicting these events at the end of a chemotherapy appointment first requires patient and encounter records that can be used together.
+
+According to the requirement, this project prepares such a dataset from the two files supplied for BIOSTAT 721 Project 1. It combines patient characteristics with encounter measurements, addresses missing and implausible values, and summarizes white blood cell count (WBC) and patient characteristics.
+
+`r if (is_word) "**2 Data**" else "# Data"`
+
+The patient file contains `r np` rows and `r ncol(result$raw_patients)` variables, with one row per patient. Its fields record the medical record number (MRN), date of birth, race, ethnicity, financial class, hypertension, congestive heart failure, and diabetes. The encounter file contains `r ne` rows and `r ncol(raw)` variables, with one row per encounter. It records MRN, encounter date and type, temperature, distress score, WBC, and body mass index (BMI). The encounters span `r format_report_date(min(analytic$contact_date))` to `r format_report_date(max(analytic$contact_date))` and comprise `r sum(analytic$enc_type == 'Office visit')` office visits and `r sum(analytic$enc_type == 'Hospital Encounter')` hospital encounters.
+
+Patient records were joined to encounter records by MRN. Each patient identifier is unique in the patient file, and every encounter matches a patient. Both files have no exact duplicate rows, and every combination of MRN and encounter date is unique. The base analytic dataset therefore contains `r nrow(result$base_analytic_dataset)` rows and `r ncol(result$base_analytic_dataset)` variables. Each row represents one encounter for one of the `r np` patients, with that patient's characteristics attached. Adding the WBC category produces a final dataset with `r ne` rows and `r ncol(analytic)` variables.
+
+`r if (is_word) "**3 Cleaning**" else "# Cleaning"`
+
+Dates were analyzed as calendar dates, and measurement fields as numeric values. WBC is measured in $10^3$ cells per $\mu$L. According to the assignment requirement, the report treats any value below 1 as below the detection limit and make it to be replaced by 1. This rule affected `r n_floor` encounters. It compresses the lower tail of the continuous WBC distribution. Each affected observation remains below 3.2 after replacement, so its WBC category is unaffected.
+
+The `r n_bmi_invalid` BMI entries recorded as $-989$ were set to missing because non-positive values cannot represent BMI. The remaining observed BMI values range from `r sprintf('%.2f', min(analytic$BMI, na.rm = TRUE))` to `r sprintf('%.2f', max(analytic$BMI, na.rm = TRUE))`. A birth date of July 22, 1889, implies an age of 124 to 129 years across one patient's 17 encounters. An age above 120 at an observed encounter was used as a project screening rule, and this patient's date of birth was set to missing pending source verification. Temperature values range from `r sprintf('%.2f', min(analytic$temp))` to `r sprintf('%.2f', max(analytic$temp))`, but their unit is not recorded. These temperatures and the positive BMI values were retained but further check may still needed.
+
+BMI was missing in `r sum(is.na(raw$BMI))` encounters (`r pct(sum(is.na(raw$BMI)), ne)`%) before cleaning and `r sum(is.na(analytic$BMI))` (`r pct(sum(is.na(analytic$BMI)), ne)`%) afterward. Distress score was missing in `r sum(is.na(analytic$distress_score))` encounters (`r pct(sum(is.na(analytic$distress_score)), ne)`%). All `r sum(analytic$enc_type == 'Hospital Encounter')` hospital encounters lack both BMI and distress score after cleaning. Among the `r sum(analytic$enc_type == 'Office visit')` office visits, `r sum(is.na(analytic$BMI) & analytic$enc_type == 'Office visit')` (`r pct(sum(is.na(analytic$BMI) & analytic$enc_type == 'Office visit'), sum(analytic$enc_type == 'Office visit'))`%) lack BMI and all have a distress score. WBC has no missing values. The suspect birth date creates missing DOB for one patient and `r sum(is.na(analytic$DOB))` encounter rows. All `r ne` encounters were retained, with missing values represented explicitly. Original values and the reasons for each change are recorded in the cleaning log.
+
+`r if (is_word) "**4 Results**" else "# Results"`
+
+Table `r table_ref("tab:patients", 1)` describes the `r np` unique patients. It was calculated from the patient dataset so that each person contributes once to each characteristic. All six characteristics are complete, and every percentage uses `r np` patients as its denominator. Most patients are White (`r pct(sum(patients$race == 'White'), np)`%) and non-Hispanic (`r pct(sum(patients$ethnicity == 'non-Hispanic'), np)`%). Medicare is recorded for `r sum(patients$financialclass == 'Medicare')` patients (`r pct(sum(patients$financialclass == 'Medicare'), np)`%). Hypertension is recorded for `r sum(patients$hypertension == 'Y')` patients, congestive heart failure for `r sum(patients$CHF == 'Y')`, and diabetes for `r sum(patients$diabetes == 'Y')`.
+
+```{r patients-table}
+# Use the patient summary, preserving one contribution per patient.
+t1 <- result$table1
+display_names <- c(race = "Race", ethnicity = "Ethnicity", financialclass = "Financial class",
+                   hypertension = "Hypertension", CHF = "Congestive heart failure", diabetes = "Diabetes")
+vars <- as.character(t1$variable)
+show_t1 <- data.frame(Characteristic = unname(display_names[vars]),
+                     Category = as.character(t1$category),
+                     `n (%)` = sprintf("%d (%.1f)", t1$n, t1$percent), check.names = FALSE)
+show_t1$Characteristic[duplicated(vars)] <- ""
+if (is_word) {
+  word_paragraph(paste0("**Table 1:** Patient characteristics ($N = ", np, "$)."))
+  word_table(show_t1, c(119, 80, 55.2))
+  word_paragraph(paste0("Percentages use all ", np, " patients. Each characteristic has no missing values."))
+} else {
+  cat("\\begin{table}[!htbp]\n\\centering\n\\caption{Patient characteristics ($N = ", np,
+      "$).}\\label{tab:patients}\n", sep = "")
+  cat(knitr::kable(show_t1, format = "latex", booktabs = TRUE, escape = TRUE, linesep = "",
+                    row.names = FALSE, align = c("l", "l", "r")), sep = "\n")
+  cat("\n\\par\\vspace{5pt}\\begin{minipage}{0.90\\textwidth}\\small\n",
+      "Percentages use all ", np, " patients. Each characteristic has no missing values.\n",
+      "\\end{minipage}\n\\end{table}\n", sep = "")
+}
+```
+
+After applying the detection-limit rule, WBC was classified as Low for values below 3.2, Normal for values from 3.2 to 9.8 inclusive, High for values above 9.8, and Not Taken for missing measurements. Table `r table_ref("tab:wbc", 2)` presents the counts in that order, using all `r ne` encounters as the denominator. WBC is Normal in `r result$wbc_summary$n[result$wbc_summary$group == 'Normal']` encounters (`r sprintf('%.1f', result$wbc_summary$percent[result$wbc_summary$group == 'Normal'])`%), Low in `r result$wbc_summary$n[result$wbc_summary$group == 'Low']` (`r sprintf('%.1f', result$wbc_summary$percent[result$wbc_summary$group == 'Low'])`%), and High in `r result$wbc_summary$n[result$wbc_summary$group == 'High']` (`r sprintf('%.1f', result$wbc_summary$percent[result$wbc_summary$group == 'High'])`%). The Not Taken category is included with a count of zero.
+
+```{r wbc-table}
+wbc <- result$wbc_summary
+show_wbc <- data.frame(Category = as.character(wbc$group),
+                       Definition = c("Below 3.2", "3.2 to 9.8, inclusive", "Above 9.8", "Missing"),
+                       `n (%)` = sprintf("%d (%.1f)", wbc$n, wbc$percent), check.names = FALSE)
+show_wbc <- rbind(show_wbc, data.frame(Category = "Total", Definition = "All encounters",
+                                     `n (%)` = sprintf("%d (100.0)", ne), check.names = FALSE))
+if (is_word) {
+  word_paragraph(paste0("**Table 2:** WBC categories across encounters ($N = ", ne, "$)."))
+  word_table(show_wbc, c(55, 112, 65))
+  word_paragraph(paste0("WBC is measured in $10^3$ cells per $\\mu$L. Percentages use all ", ne, " encounters."))
+} else {
+  cat("\\begin{table}[!htbp]\n\\centering\n\\caption{WBC categories across encounters ($N = ", ne,
+      "$).}\\label{tab:wbc}\n", sep = "")
+  cat(knitr::kable(show_wbc, format = "latex", booktabs = TRUE, escape = TRUE, linesep = "",
+                    row.names = FALSE, align = c("l", "l", "r")), sep = "\n")
+  cat("\n\\par\\vspace{5pt}\\begin{minipage}{0.90\\textwidth}\\small\n",
+      "WBC is measured in $10^3$ cells per $\\mu$L. Percentages use all ", ne,
+      " encounters.\n\\end{minipage}\n\\end{table}\n", sep = "")
+}
+```
+
+`r if (!is_word) "\\FloatBarrier"`
+
+`r if (is_word) "**5 Discussion**" else "# Discussion"`
+
+The final dataset brings patient characteristics and encounter measurements together with explicit cleaning rules and traceable changes. The patient and encounter summaries describe different units of observation. Repeated encounters from the same person may be related and need further check for potential connection among datas. The concentration of missing BMI and distress scores in hospital encounters also requires attention.
+
+Additional information is needed to define the proposed prediction task as well. Specifically, The label Hospital Encounter does not separately identify emergency department visits, planned admissions, and unanticipated admissions. A valid outcome window would require the timing and nature of hospital events and the next chemotherapy appointment. Measurement availability times are also absent.
+
+The analysis used R `r as.character(getRversion())`, with base R for data preparation. This report was generated in R Markdown using rmarkdown `r as.character(packageVersion('rmarkdown'))` and knitr `r as.character(packageVersion('knitr'))`, and converted to `r if (is_word) "Word" else "LaTeX"` with Pandoc `r as.character(rmarkdown::pandoc_version())`. The assignment instructions and the two supplied CSV files are the sources for the analysis.
+
+`r if (is_word) "**6 AI Use Disclosure**" else "# AI Use Disclosure"`
+
+Microsoft Copilot equipped with ChatGPT 5.6 was used for checking if the task was completed and strictly follow the project requirement. It pointed out the mistakes that I did not follow the requirement of "(For WBC data) Any count <1 in our data is under the limit of detection. Convert any value <1 to 1" and did not use RMarkdown or Quarto to finish the report, instead runs a simple R script and write the report with latex manually with the analyzed result. I manually fix the first part of Rscript of the WBC conversion, and AI assisted in teaching me to write a R markdown report template, using function to automatically put analyzed result into the template, and compile it via latex. Based on latest course instruction, AI also assisted in teaching to generate a word document from R markdown for better edition purposes. All AI result are checked manually.

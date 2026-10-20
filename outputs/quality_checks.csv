@@ -1,0 +1,25 @@
+"check","observed","expected","pass"
+"patient_input_shape","50 x 8","50 x 8",TRUE
+"encounter_input_shape","550 x 7","550 x 7",TRUE
+"patient_source_exact_duplicates","0","0",TRUE
+"encounter_source_exact_duplicates","0","0",TRUE
+"encounter_MRN_date_duplicates","0","0",TRUE
+"encounter_date_not_before_raw_DOB","0","0",TRUE
+"patient_MRN_unique","50","50",TRUE
+"all_encounters_matched","550","550",TRUE
+"all_patients_represented","50","50",TRUE
+"base_analytic_shape","550 x 14","550 x 14",TRUE
+"final_analytic_shape","550 x 15","550 x 15",TRUE
+"encounter_order_preserved","MRN and contact_date vectors","identical to encounter source",TRUE
+"date_columns_parsed","Date Date","Date Date",TRUE
+"WBC_minimum_one","1",">= 1",TRUE
+"WBC_only_values_below_one_changed","14","14",TRUE
+"WBC_ordered_factor","Low, Normal, High, Not Taken","Low, Normal, High, Not Taken",TRUE
+"WBC_boundaries_and_missing","Low, Normal, Normal, High, Not Taken","Low, Normal, Normal, High, Not Taken",TRUE
+"WBC_summary_denominator","550","550",TRUE
+"Table1_patient_denominators","50, 50, 50, 50, 50, 50","50 per variable",TRUE
+"BMI_missingness_accounted_for","92","92",TRUE
+"positive_BMI_preserved","values outside flagged rows","identical to encounter source",TRUE
+"DOB_flagged_values_missing","1","all flagged values are missing; other values preserved",TRUE
+"temperature_and_distress_preserved","temperature and distress vectors","identical to encounter source",TRUE
+"cleaning_log_complete","21","21",TRUE

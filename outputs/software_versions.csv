@@ -1,0 +1,6 @@
+"Component","Version"
+"R","4.6.0"
+"rmarkdown","2.32"
+"knitr","1.51"
+"base / stats / utils / tools","4.6.0"
+"Pandoc","3.8.3"

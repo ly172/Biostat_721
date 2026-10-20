@@ -1,0 +1,206 @@
+% Plain article layout. The generated overleaf/main.tex embeds this preamble.
+\documentclass[11pt,letterpaper]{article}
+\usepackage[T1]{fontenc}
+\usepackage{lmodern}
+\usepackage[margin=1in]{geometry}
+\usepackage{microtype}
+\usepackage{amsmath,amssymb}
+\usepackage{booktabs}
+\usepackage{caption}
+\usepackage{placeins}
+\usepackage{fancyhdr}
+\usepackage[hidelinks]{hyperref}
+
+\setlength{\parindent}{1.5em}
+\setlength{\parskip}{0pt}
+\setlength{\headheight}{14pt}
+\setlength{\emergencystretch}{2em}
+\renewcommand{\arraystretch}{1.12}
+\captionsetup{font=small,labelfont=bf,skip=7pt}
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small Ovarian cancer data preparation}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+\fancypagestyle{plain}{\fancyhf{}\fancyfoot[C]{\thepage}\renewcommand{\headrulewidth}{0pt}}
+\providecommand{\tightlist}{\setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\hypersetup{pdftitle={Preparing an Ovarian Cancer Dataset},pdfsubject={BIOSTAT 721 Project 1}}
+
+\title{Preparing an Ovarian Cancer Dataset}
+\author{BIOSTAT 721 Project 1}
+\date{}
+
+\begin{document}
+\maketitle
+\vspace{-1.5em}
+\section{Introduction}\label{introduction}
+
+Women with active ovarian cancer attend chemotherapy appointments every
+two to three weeks. Visits to the emergency department or unanticipated
+hospital admissions between appointments are a concern for their
+physicians. Predicting these events at the end of a chemotherapy
+appointment first requires patient and encounter records that can be
+used together.
+
+According to the requirement, this project prepares such a dataset from
+the two files supplied for BIOSTAT 721 Project 1. It combines patient
+characteristics with encounter measurements, addresses missing and
+implausible values, and summarizes white blood cell count (WBC) and
+patient characteristics.
+
+\section{Data}\label{data}
+
+The patient file contains 50 rows and 8 variables, with one row per
+patient. Its fields record the medical record number (MRN), date of
+birth, race, ethnicity, financial class, hypertension, congestive heart
+failure, and diabetes. The encounter file contains 550 rows and 7
+variables, with one row per encounter. It records MRN, encounter date
+and type, temperature, distress score, WBC, and body mass index (BMI).
+The encounters span January 02, 2014 to September 01, 2019 and comprise
+497 office visits and 53 hospital encounters.
+
+Patient records were joined to encounter records by MRN. Each patient
+identifier is unique in the patient file, and every encounter matches a
+patient. Both files have no exact duplicate rows, and every combination
+of MRN and encounter date is unique. The base analytic dataset therefore
+contains 550 rows and 14 variables. Each row represents one encounter
+for one of the 50 patients, with that patient's characteristics
+attached. Adding the WBC category produces a final dataset with 550 rows
+and 15 variables.
+
+\section{Cleaning}\label{cleaning}
+
+Dates were analyzed as calendar dates, and measurement fields as numeric
+values. WBC is measured in \(10^3\) cells per \(\mu\)L. According to the
+assignment requirement, the report treats any value below 1 as below the
+detection limit and make it to be replaced by 1. This rule affected 14
+encounters. It compresses the lower tail of the continuous WBC
+distribution. Each affected observation remains below 3.2 after
+replacement, so its WBC category is unaffected.
+
+The 6 BMI entries recorded as \(-989\) were set to missing because
+non-positive values cannot represent BMI. The remaining observed BMI
+values range from 12.16 to 45.91. A birth date of July 22, 1889, implies
+an age of 124 to 129 years across one patient's 17 encounters. An age
+above 120 at an observed encounter was used as a project screening rule,
+and this patient's date of birth was set to missing pending source
+verification. Temperature values range from 96.26 to 103.20, but their
+unit is not recorded. These temperatures and the positive BMI values
+were retained but further check may still needed.
+
+BMI was missing in 86 encounters (15.6\%) before cleaning and 92
+(16.7\%) afterward. Distress score was missing in 53 encounters (9.6\%).
+All 53 hospital encounters lack both BMI and distress score after
+cleaning. Among the 497 office visits, 39 (7.8\%) lack BMI and all have
+a distress score. WBC has no missing values. The suspect birth date
+creates missing DOB for one patient and 17 encounter rows. All 550
+encounters were retained, with missing values represented explicitly.
+Original values and the reasons for each change are recorded in the
+cleaning log.
+
+\section{Results}\label{results}
+
+Table \ref{tab:patients} describes the 50 unique patients. It was
+calculated from the patient dataset so that each person contributes once
+to each characteristic. All six characteristics are complete, and every
+percentage uses 50 patients as its denominator. Most patients are White
+(74.0\%) and non-Hispanic (94.0\%). Medicare is recorded for 29 patients
+(58.0\%). Hypertension is recorded for 20 patients, congestive heart
+failure for 5, and diabetes for 2.
+
+\begin{table}[!htbp]
+\centering
+\caption{Patient characteristics ($N = 50$).}\label{tab:patients}
+
+\begin{tabular}{llr}
+\toprule
+Characteristic & Category & n (\%)\\
+\midrule
+Race & White & 37 (74.0)\\
+ & Black & 10 (20.0)\\
+ & Other & 3 (6.0)\\
+Ethnicity & non-Hispanic & 47 (94.0)\\
+ & Hispanic & 3 (6.0)\\
+Financial class & Medicare & 29 (58.0)\\
+ & Private & 21 (42.0)\\
+Hypertension & No & 30 (60.0)\\
+ & Yes & 20 (40.0)\\
+Congestive heart failure & No & 45 (90.0)\\
+ & Yes & 5 (10.0)\\
+Diabetes & No & 48 (96.0)\\
+ & Yes & 2 (4.0)\\
+\bottomrule
+\end{tabular}
+
+\par\vspace{5pt}\begin{minipage}{0.90\textwidth}\small
+Percentages use all 50 patients. Each characteristic has no missing values.
+\end{minipage}
+\end{table}
+
+After applying the detection-limit rule, WBC was classified as Low for
+values below 3.2, Normal for values from 3.2 to 9.8 inclusive, High for
+values above 9.8, and Not Taken for missing measurements. Table
+\ref{tab:wbc} presents the counts in that order, using all 550
+encounters as the denominator. WBC is Normal in 436 encounters (79.3\%),
+Low in 54 (9.8\%), and High in 60 (10.9\%). The Not Taken category is
+included with a count of zero.
+
+\begin{table}[!htbp]
+\centering
+\caption{WBC categories across encounters ($N = 550$).}\label{tab:wbc}
+
+\begin{tabular}{llr}
+\toprule
+Category & Definition & n (\%)\\
+\midrule
+Low & Below 3.2 & 54 (9.8)\\
+Normal & 3.2 to 9.8, inclusive & 436 (79.3)\\
+High & Above 9.8 & 60 (10.9)\\
+Not Taken & Missing & 0 (0.0)\\
+Total & All encounters & 550 (100.0)\\
+\bottomrule
+\end{tabular}
+
+\par\vspace{5pt}\begin{minipage}{0.90\textwidth}\small
+WBC is measured in $10^3$ cells per $\mu$L. Percentages use all 550 encounters.
+\end{minipage}
+\end{table}
+
+\FloatBarrier
+
+\section{Discussion}\label{discussion}
+
+The final dataset brings patient characteristics and encounter
+measurements together with explicit cleaning rules and traceable
+changes. The patient and encounter summaries describe different units of
+observation. Repeated encounters from the same person may be related and
+need further check for potential connection among datas. The
+concentration of missing BMI and distress scores in hospital encounters
+also requires attention.
+
+Additional information is needed to define the proposed prediction task
+as well. Specifically, The label Hospital Encounter does not separately
+identify emergency department visits, planned admissions, and
+unanticipated admissions. A valid outcome window would require the
+timing and nature of hospital events and the next chemotherapy
+appointment. Measurement availability times are also absent.
+
+The analysis used R 4.6.0, with base R for data preparation. This report
+was generated in R Markdown using rmarkdown 2.32 and knitr 1.51, and
+converted to LaTeX with Pandoc 3.8.3. The assignment instructions and
+the two supplied CSV files are the sources for the analysis.
+
+\section{AI Use Disclosure}\label{ai-use-disclosure}
+
+Microsoft Copilot equipped with ChatGPT 5.6 was used for checking if the
+task was completed and strictly follow the project requirement. It
+pointed out the mistakes that I did not follow the requirement of ``(For
+WBC data) Any count \textless1 in our data is under the limit of
+detection. Convert any value \textless1 to 1'' and did not use RMarkdown
+or Quarto to finish the report, instead runs a simple R script and write
+the report with latex manually with the analyzed result. I manually fix
+the first part of Rscript of the WBC conversion, and AI assisted in
+teaching me to write a R markdown report template, using function to
+automatically put analyzed result into the template, and compile it via
+latex. All AI result is checked manually.
+\end{document}
